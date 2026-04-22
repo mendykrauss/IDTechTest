@@ -3,11 +3,30 @@ from io import StringIO
 
 from flask import Blueprint, Response, jsonify, request
 from app import db
-from app.models import Asset
+from app.models import Asset, AssetStatusAudit
 
 assets_bp = Blueprint('assets', __name__, url_prefix='/api')
 
 PER_PAGE = 10
+
+
+def _requester_ip():
+    forwarded_for = request.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    return request.remote_addr or 'unknown'
+
+
+def _log_status_change(asset, previous_status, new_status):
+    if previous_status == new_status:
+        return
+
+    db.session.add(AssetStatusAudit(
+        asset_id=asset.id,
+        previous_status=previous_status,
+        new_status=new_status,
+        requester_ip=_requester_ip(),
+    ))
 
 
 def _build_filtered_assets_query():
@@ -101,6 +120,16 @@ def get_asset(asset_id):
     return jsonify(asset.to_dict())
 
 
+@assets_bp.route('/assets/<int:asset_id>/audit', methods=['GET'])
+def get_asset_audit_history(asset_id):
+    Asset.query.get_or_404(asset_id)
+    audits = AssetStatusAudit.query.filter_by(asset_id=asset_id).order_by(
+        AssetStatusAudit.created_at.desc(),
+        AssetStatusAudit.id.desc(),
+    ).all()
+    return jsonify({'history': [entry.to_dict() for entry in audits]})
+
+
 @assets_bp.route('/assets', methods=['POST'])
 def create_asset():
     data = request.get_json()
@@ -179,6 +208,7 @@ def delete_asset(asset_id):
 @assets_bp.route('/assets/<int:asset_id>/toggle', methods=['POST'])
 def toggle_asset_status(asset_id):
     asset = Asset.query.get_or_404(asset_id)
+    previous_status = asset.status
 
     if asset.status == 'active':
         asset.status = 'inactive'
@@ -186,6 +216,7 @@ def toggle_asset_status(asset_id):
         asset.status = 'active'
     # retired assets cannot be toggled further
 
+    _log_status_change(asset, previous_status, asset.status)
     db.session.commit()
     return jsonify(asset.to_dict())
 
@@ -195,6 +226,9 @@ def decommission_asset(asset_id):
     asset = Asset.query.get_or_404(asset_id)
     if asset.status == 'retired':
         return jsonify({'error': 'Asset is already retired'}), 400
+
+    previous_status = asset.status
     asset.status = 'retired'
+    _log_status_change(asset, previous_status, asset.status)
     db.session.commit()
     return jsonify(asset.to_dict())

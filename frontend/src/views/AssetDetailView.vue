@@ -1,7 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getAsset, toggleAsset, decommissionAsset, deleteAsset } from '../api/index.js'
+import {
+  getAsset,
+  getAssetAudit,
+  toggleAsset,
+  decommissionAsset,
+  deleteAsset,
+} from '../api/index.js'
 import StatusBadge from '../components/StatusBadge.vue'
 
 const route = useRoute()
@@ -9,11 +15,30 @@ const router = useRouter()
 const asset = ref(null)
 const loading = ref(true)
 const error = ref(null)
+const auditHistory = ref([])
+const auditLoading = ref(false)
+const auditError = ref(null)
+
+const loadAuditHistory = async (assetId) => {
+  auditLoading.value = true
+  auditError.value = null
+  try {
+    const data = await getAssetAudit(assetId)
+    auditHistory.value = data.history ?? []
+  } catch (err) {
+    auditError.value = 'Failed to load audit history.'
+  } finally {
+    auditLoading.value = false
+  }
+}
 
 const loadAsset = async () => {
   loading.value = true
+  error.value = null
   try {
-    asset.value = await getAsset(route.params.id)
+    const loadedAsset = await getAsset(route.params.id)
+    asset.value = loadedAsset
+    await loadAuditHistory(loadedAsset.id)
   } catch (err) {
     error.value = err.response?.status === 404 ? 'Asset not found.' : 'Failed to load asset.'
   } finally {
@@ -111,11 +136,44 @@ onMounted(loadAsset)
         </div>
       </div>
 
-      <!--
-        Feature 2: Audit Log
-        Add a section below that fetches and displays the status change history
-        for this asset from GET /api/assets/<id>/audit.
-      -->
+      <div class="card mb-4">
+        <div class="card-header fw-semibold">Status Change History</div>
+        <div class="card-body p-0">
+          <div v-if="auditLoading" class="p-3 text-muted small">
+            <div class="spinner-border spinner-border-sm me-2"></div>
+            Loading audit history...
+          </div>
+
+          <div v-else-if="auditError" class="p-3">
+            <div class="alert alert-warning mb-0">{{ auditError }}</div>
+          </div>
+
+          <div v-else-if="auditHistory.length === 0" class="p-3 text-muted">
+            No status changes have been logged yet.
+          </div>
+
+          <div v-else class="table-responsive">
+            <table class="table table-sm table-striped mb-0 align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">When</th>
+                  <th scope="col">From</th>
+                  <th scope="col">To</th>
+                  <th scope="col">Requester IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="entry in auditHistory" :key="entry.id">
+                  <td>{{ formatDate(entry.timestamp) }}</td>
+                  <td class="text-capitalize">{{ entry.previous_status }}</td>
+                  <td class="text-capitalize">{{ entry.new_status }}</td>
+                  <td>{{ entry.requester_ip }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       <div class="d-flex gap-2 flex-wrap">
         <button

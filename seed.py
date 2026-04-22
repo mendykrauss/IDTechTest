@@ -4,7 +4,7 @@ Run this after setting up the database: python seed.py
 """
 from datetime import datetime, timedelta, timezone
 from app import create_app, db
-from app.models import Client, Asset
+from app.models import Client, Asset, AssetStatusAudit
 
 app = create_app('development')
 
@@ -14,6 +14,7 @@ def seed():
         db.create_all()
 
         # Clear existing data
+        AssetStatusAudit.query.delete()
         Asset.query.delete()
         Client.query.delete()
         db.session.commit()

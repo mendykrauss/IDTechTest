@@ -29,6 +29,9 @@ export const getAssetExportCsvUrl = (params = {}) => {
 
 export const getAsset = (id) => api.get(`/assets/${id}`).then((r) => r.data)
 
+export const getAssetAudit = (id) =>
+  api.get(`/assets/${id}/audit`).then((r) => r.data)
+
 export const createAsset = (data) => api.post('/assets', data).then((r) => r.data)
 
 export const updateAsset = (id, data) =>

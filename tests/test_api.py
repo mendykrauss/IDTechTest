@@ -55,6 +55,24 @@ def test_get_asset_not_found(flask_client):
     assert response.status_code == 404
 
 
+def test_get_asset_audit_history(flask_client):
+    """GET /api/assets/<id>/audit returns status change history for the asset."""
+    toggle_response = flask_client.post('/api/assets/1/toggle')
+    assert toggle_response.status_code == 200
+
+    response = flask_client.get('/api/assets/1/audit')
+    assert response.status_code == 200
+
+    data = json.loads(response.data)
+    assert 'history' in data
+    assert len(data['history']) == 1
+    assert data['history'][0]['asset_id'] == 1
+    assert data['history'][0]['previous_status'] == 'active'
+    assert data['history'][0]['new_status'] == 'inactive'
+    assert data['history'][0]['requester_ip'] == '127.0.0.1'
+    assert 'timestamp' in data['history'][0]
+
+
 def test_export_assets_csv_returns_downloadable_file(flask_client):
     """GET /api/assets/export returns CSV with download headers."""
     response = flask_client.get('/api/assets/export')
@@ -156,6 +174,21 @@ def test_toggle_inactive_asset_becomes_active(flask_client):
 
     data = json.loads(response.data)
     assert data['status'] == 'active'
+
+
+def test_decommission_logs_audit_entry(flask_client):
+    """Decommissioning an asset writes an audit history record."""
+    response = flask_client.post('/api/assets/1/decommission')
+    assert response.status_code == 200
+    data = json.loads(response.data)
+    assert data['status'] == 'retired'
+
+    audit_response = flask_client.get('/api/assets/1/audit')
+    assert audit_response.status_code == 200
+    audit_data = json.loads(audit_response.data)
+    assert len(audit_data['history']) == 1
+    assert audit_data['history'][0]['previous_status'] == 'active'
+    assert audit_data['history'][0]['new_status'] == 'retired'
 
 
 # ---------------------------------------------------------------------------

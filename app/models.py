@@ -41,6 +41,13 @@ class Asset(db.Model):
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
+    audit_logs = db.relationship(
+        'AssetStatusAudit',
+        backref='asset',
+        lazy=True,
+        cascade='all, delete-orphan',
+    )
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -54,4 +61,25 @@ class Asset(db.Model):
             'last_seen': self.last_seen.isoformat() if self.last_seen else None,
             'notes': self.notes,
             'created_at': self.created_at.isoformat(),
+        }
+
+
+class AssetStatusAudit(db.Model):
+    __tablename__ = 'asset_status_audits'
+
+    id = db.Column(db.Integer, primary_key=True)
+    asset_id = db.Column(db.Integer, db.ForeignKey('assets.id'), nullable=False)
+    previous_status = db.Column(db.String(50), nullable=False)
+    new_status = db.Column(db.String(50), nullable=False)
+    requester_ip = db.Column(db.String(45), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'asset_id': self.asset_id,
+            'previous_status': self.previous_status,
+            'new_status': self.new_status,
+            'requester_ip': self.requester_ip,
+            'timestamp': self.created_at.isoformat(),
         }
