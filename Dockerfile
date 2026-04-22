@@ -12,12 +12,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+ENV FLASK_ENV=production
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
 COPY config.py run.py seed.py ./
+COPY --from=frontend-builder /frontend/dist ./app/static/dist
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "run:app"]
+CMD ["sh", "-c", "python seed.py && exec gunicorn --bind 0.0.0.0:5000 run:app"]
