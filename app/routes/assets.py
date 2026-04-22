@@ -17,7 +17,7 @@ def list_assets():
     query = Asset.query
 
     if search:
-        query = query.filter(Asset.name == search)
+        query = query.filter(Asset.name.ilike(f'%{search}%'))
 
     if asset_type:
         query = query.filter(Asset.asset_type == asset_type)
