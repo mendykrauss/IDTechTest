@@ -11,7 +11,7 @@ const search = ref('')
 const loading = ref(false)
 const error = ref(null)
 
-const formatDate = (dateStr) => dateStr.split('T')[0]
+const formatDate = (dateStr) => (dateStr ? dateStr.split('T')[0] : '—')
 
 const fetchAssets = async () => {
   loading.value = true
