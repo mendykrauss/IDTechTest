@@ -161,5 +161,8 @@ def test_delete_client_with_assets_fails(flask_client):
       - status code is 409
       - response JSON contains an 'error' key
     """
-    # TODO: implement this test
-    pass
+    response = flask_client.delete('/api/clients/1')
+    assert response.status_code == 409
+
+    data = json.loads(response.data)
+    assert 'error' in data
