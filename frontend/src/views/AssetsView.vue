@@ -1,19 +1,46 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { getAssets, getAssetExportCsvUrl, toggleAsset, deleteAsset } from '../api/index.js'
 import AssetTable from '../components/AssetTable.vue'
 
+const route = useRoute()
+const router = useRouter()
+
+const ASSET_TYPE_OPTIONS = ['workstation', 'server', 'network', 'peripheral']
+const STATUS_OPTIONS = ['active', 'inactive', 'retired']
+
+const normalizeQueryValue = (value) => (typeof value === 'string' ? value : '')
+const normalizePage = (value) => {
+  const page = Number.parseInt(value, 10)
+  return Number.isFinite(page) && page > 0 ? page : 1
+}
+const normalizeFilter = (value, allowedValues) =>
+  allowedValues.includes(value) ? value : ''
+
 const assets = ref([])
 const total = ref(0)
-const currentPage = ref(1)
+const currentPage = ref(normalizePage(route.query.page))
 const totalPages = ref(1)
-const search = ref('')
-const assetType = ref('')
-const status = ref('')
+const search = ref(normalizeQueryValue(route.query.search))
+const assetType = ref(normalizeFilter(normalizeQueryValue(route.query.type), ASSET_TYPE_OPTIONS))
+const status = ref(normalizeFilter(normalizeQueryValue(route.query.status), STATUS_OPTIONS))
 const loading = ref(false)
 const error = ref(null)
 
 const formatDate = (dateStr) => (dateStr ? dateStr.split('T')[0] : '—')
+
+const syncQueryString = () => {
+  const query = {}
+
+  const trimmedSearch = search.value.trim()
+  if (trimmedSearch) query.search = trimmedSearch
+  if (assetType.value) query.type = assetType.value
+  if (status.value) query.status = status.value
+  if (currentPage.value > 1) query.page = String(currentPage.value)
+
+  router.replace({ query })
+}
 
 const fetchAssets = async () => {
   loading.value = true
@@ -69,11 +96,25 @@ const goToPage = (page) => {
   const nextPage = Math.min(Math.max(page, 1), totalPages.value)
   if (nextPage === currentPage.value) return
   currentPage.value = nextPage
+  syncQueryString()
   fetchAssets()
 }
 
 watch(search, () => {
   currentPage.value = 1
+  syncQueryString()
+  fetchAssets()
+})
+
+watch(assetType, () => {
+  currentPage.value = 1
+  syncQueryString()
+  fetchAssets()
+})
+
+watch(status, () => {
+  currentPage.value = 1
+  syncQueryString()
   fetchAssets()
 })
 
@@ -112,11 +153,22 @@ onMounted(fetchAssets)
               />
             </div>
           </div>
-          <!--
-            Feature 3: Add "Asset Type" and "Status" filter dropdowns here.
-            The backend already accepts ?type= and ?status= query params on GET /api/assets.
-            Wire them up so selecting a filter re-fetches the list reactively.
-          -->
+          <div class="col-12 col-md-3">
+            <select v-model="assetType" class="form-select">
+              <option value="">All asset types</option>
+              <option v-for="type in ASSET_TYPE_OPTIONS" :key="type" :value="type">
+                {{ type.charAt(0).toUpperCase() + type.slice(1) }}
+              </option>
+            </select>
+          </div>
+          <div class="col-12 col-md-3">
+            <select v-model="status" class="form-select">
+              <option value="">All statuses</option>
+              <option v-for="statusOption in STATUS_OPTIONS" :key="statusOption" :value="statusOption">
+                {{ statusOption.charAt(0).toUpperCase() + statusOption.slice(1) }}
+              </option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
