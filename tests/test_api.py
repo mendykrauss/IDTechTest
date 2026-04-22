@@ -116,8 +116,11 @@ def test_toggle_inactive_asset_becomes_active(flask_client):
       - status code is 200
       - returned status is 'active'
     """
-    # TODO: implement this test
-    pass
+    response = flask_client.post('/api/assets/2/toggle')
+    assert response.status_code == 200
+
+    data = json.loads(response.data)
+    assert data['status'] == 'active'
 
 
 # ---------------------------------------------------------------------------

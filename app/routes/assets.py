@@ -108,7 +108,7 @@ def toggle_asset_status(asset_id):
     if asset.status == 'active':
         asset.status = 'inactive'
     elif asset.status == 'inactive':
-        asset.status = 'retired'
+        asset.status = 'active'
     # retired assets cannot be toggled further
 
     db.session.commit()
