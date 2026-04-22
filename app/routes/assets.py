@@ -51,6 +51,25 @@ def create_asset():
     if not data:
         return jsonify({'error': 'Request body must be JSON'}), 400
 
+    missing_fields = []
+    field_labels = {
+        'name': 'Name',
+        'asset_type': 'Type',
+        'client_id': 'Client',
+    }
+    for field in ('name', 'asset_type', 'client_id'):
+        value = data.get(field)
+        if value is None:
+            missing_fields.append(field)
+            continue
+        if isinstance(value, str) and not value.strip():
+            missing_fields.append(field)
+    if missing_fields:
+        missing_labels = [field_labels[field] for field in missing_fields]
+        return jsonify({
+            'error': f"Missing required field(s): {', '.join(missing_labels)}"
+        }), 400
+
     name = data['name']
     asset_type = data['asset_type']
     client_id = data['client_id']

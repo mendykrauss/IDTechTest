@@ -85,10 +85,18 @@ def test_create_asset_missing_fields(flask_client):
 
     Required fields: name, asset_type, client_id
     """
-    # TODO: send a POST with an empty (or incomplete) body and assert:
-    #   - status code is 400
-    #   - response JSON contains an 'error' key
-    pass
+    payload = {
+        'name': 'Missing Required Fields Asset',
+    }
+    response = flask_client.post(
+        '/api/assets',
+        data=json.dumps(payload),
+        content_type='application/json',
+    )
+
+    assert response.status_code == 400
+    data = json.loads(response.data)
+    assert 'error' in data
 
 
 # ---------------------------------------------------------------------------
