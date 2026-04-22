@@ -44,7 +44,9 @@ const handleDelete = async (asset) => {
 }
 
 const goToPage = (page) => {
-  currentPage.value = page
+  const nextPage = Math.min(Math.max(page, 1), totalPages.value)
+  if (nextPage === currentPage.value) return
+  currentPage.value = nextPage
   fetchAssets()
 }
 
@@ -118,7 +120,11 @@ onMounted(fetchAssets)
     <nav v-if="totalPages > 1" class="mt-3" aria-label="Asset pages">
       <ul class="pagination justify-content-center mb-0">
         <li class="page-item" :class="{ disabled: currentPage === 1 }">
-          <button class="page-link" @click="goToPage(currentPage - 1)">
+          <button
+            class="page-link"
+            :disabled="currentPage === 1"
+            @click="goToPage(currentPage - 1)"
+          >
             <i class="bi bi-chevron-left"></i>
           </button>
         </li>
@@ -131,7 +137,11 @@ onMounted(fetchAssets)
           <button class="page-link" @click="goToPage(p)">{{ p }}</button>
         </li>
         <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-          <button class="page-link" @click="goToPage(currentPage + 1)">
+          <button
+            class="page-link"
+            :disabled="currentPage === totalPages"
+            @click="goToPage(currentPage + 1)"
+          >
             <i class="bi bi-chevron-right"></i>
           </button>
         </li>

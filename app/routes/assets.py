@@ -9,7 +9,7 @@ PER_PAGE = 10
 
 @assets_bp.route('/assets', methods=['GET'])
 def list_assets():
-    page = request.args.get('page', 1, type=int)
+    page = max(1, request.args.get('page', 1, type=int))
     search = request.args.get('search', '').strip()
     asset_type = request.args.get('type', '').strip()
     status = request.args.get('status', '').strip()
@@ -27,7 +27,7 @@ def list_assets():
 
     total = query.count()
 
-    offset = page * PER_PAGE
+    offset = (page - 1) * PER_PAGE
     assets = query.order_by(Asset.name).offset(offset).limit(PER_PAGE).all()
 
     return jsonify({
