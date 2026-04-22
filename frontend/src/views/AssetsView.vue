@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { getAssets, toggleAsset, deleteAsset } from '../api/index.js'
+import { getAssets, getAssetExportCsvUrl, toggleAsset, deleteAsset } from '../api/index.js'
 import AssetTable from '../components/AssetTable.vue'
 
 const assets = ref([])
@@ -8,6 +8,8 @@ const total = ref(0)
 const currentPage = ref(1)
 const totalPages = ref(1)
 const search = ref('')
+const assetType = ref('')
+const status = ref('')
 const loading = ref(false)
 const error = ref(null)
 
@@ -17,7 +19,12 @@ const fetchAssets = async () => {
   loading.value = true
   error.value = null
   try {
-    const data = await getAssets({ search: search.value, page: currentPage.value })
+    const data = await getAssets({
+      search: search.value,
+      type: assetType.value,
+      status: status.value,
+      page: currentPage.value,
+    })
     assets.value = data.assets.map((a) => ({
       ...a,
       last_seen_formatted: formatDate(a.last_seen),
@@ -43,6 +50,21 @@ const handleDelete = async (asset) => {
   fetchAssets()
 }
 
+const handleExportCsv = () => {
+  const url = getAssetExportCsvUrl({
+    search: search.value,
+    type: assetType.value,
+    status: status.value,
+  })
+
+  const link = document.createElement('a')
+  link.href = url
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 const goToPage = (page) => {
   const nextPage = Math.min(Math.max(page, 1), totalPages.value)
   if (nextPage === currentPage.value) return
@@ -65,7 +87,10 @@ onMounted(fetchAssets)
         <h1 class="h3 mb-0">Assets</h1>
         <p class="text-muted mb-0">{{ total }} total asset{{ total !== 1 ? 's' : '' }}</p>
       </div>
-      <router-link to="/assets/new" class="btn btn-primary ms-auto">
+      <button type="button" class="btn btn-outline-secondary ms-auto me-2" @click="handleExportCsv">
+        <i class="bi bi-download me-1"></i>Export CSV
+      </button>
+      <router-link to="/assets/new" class="btn btn-primary">
         <i class="bi bi-plus-lg me-1"></i>Add Asset
       </router-link>
     </div>

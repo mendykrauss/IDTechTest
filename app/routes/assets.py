@@ -1,4 +1,7 @@
-from flask import Blueprint, jsonify, request
+import csv
+from io import StringIO
+
+from flask import Blueprint, Response, jsonify, request
 from app import db
 from app.models import Asset
 
@@ -7,9 +10,7 @@ assets_bp = Blueprint('assets', __name__, url_prefix='/api')
 PER_PAGE = 10
 
 
-@assets_bp.route('/assets', methods=['GET'])
-def list_assets():
-    page = max(1, request.args.get('page', 1, type=int))
+def _build_filtered_assets_query():
     search = request.args.get('search', '').strip()
     asset_type = request.args.get('type', '').strip()
     status = request.args.get('status', '').strip()
@@ -25,6 +26,14 @@ def list_assets():
     if status:
         query = query.filter(Asset.status == status)
 
+    return query
+
+
+@assets_bp.route('/assets', methods=['GET'])
+def list_assets():
+    page = max(1, request.args.get('page', 1, type=int))
+    query = _build_filtered_assets_query()
+
     total = query.count()
 
     offset = (page - 1) * PER_PAGE
@@ -37,6 +46,53 @@ def list_assets():
         'per_page': PER_PAGE,
         'pages': max(1, (total + PER_PAGE - 1) // PER_PAGE),
     })
+
+
+@assets_bp.route('/assets/export', methods=['GET'])
+def export_assets_csv():
+    assets = _build_filtered_assets_query().order_by(Asset.name).all()
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        'id',
+        'name',
+        'asset_type',
+        'status',
+        'client_id',
+        'client_name',
+        'serial_number',
+        'assigned_to',
+        'last_seen',
+        'notes',
+        'created_at',
+    ])
+
+    for asset in assets:
+        writer.writerow([
+            asset.id,
+            asset.name,
+            asset.asset_type,
+            asset.status,
+            asset.client_id,
+            asset.client.name if asset.client else '',
+            asset.serial_number or '',
+            asset.assigned_to or '',
+            asset.last_seen.isoformat() if asset.last_seen else '',
+            asset.notes or '',
+            asset.created_at.isoformat() if asset.created_at else '',
+        ])
+
+    csv_data = output.getvalue()
+    output.close()
+
+    return Response(
+        csv_data,
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': 'attachment; filename=assets.csv',
+        },
+    )
 
 
 @assets_bp.route('/assets/<int:asset_id>', methods=['GET'])

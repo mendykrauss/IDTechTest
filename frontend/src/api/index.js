@@ -7,13 +7,24 @@ const api = axios.create({
 
 // --- Assets ---
 
-export const getAssets = (params = {}) => {
+const buildAssetQuery = (params = {}) => {
   const query = new URLSearchParams()
   if (params.search) query.set('search', params.search)
+  if (params.type) query.set('type', params.type)
+  if (params.status) query.set('status', params.status)
   if (params.page) query.set('page', params.page)
-  // NOTE: 'type' and 'status' filters are intentionally NOT wired up here yet.
-  // The backend already supports them — see Feature 3 in the README.
+  return query
+}
+
+export const getAssets = (params = {}) => {
+  const query = buildAssetQuery(params)
   return api.get(`/assets?${query}`).then((r) => r.data)
+}
+
+export const getAssetExportCsvUrl = (params = {}) => {
+  const query = buildAssetQuery(params)
+  const queryString = query.toString()
+  return queryString ? `/api/assets/export?${queryString}` : '/api/assets/export'
 }
 
 export const getAsset = (id) => api.get(`/assets/${id}`).then((r) => r.data)

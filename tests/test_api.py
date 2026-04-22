@@ -5,6 +5,8 @@ Some tests are already written to demonstrate the testing patterns used here.
 The TODOs are yours to complete as part of the assessment.
 """
 import json
+from csv import DictReader
+from io import StringIO
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +53,31 @@ def test_get_asset_not_found(flask_client):
     """GET /api/assets/<id> returns 404 for a nonexistent asset."""
     response = flask_client.get('/api/assets/99999')
     assert response.status_code == 404
+
+
+def test_export_assets_csv_returns_downloadable_file(flask_client):
+    """GET /api/assets/export returns CSV with download headers."""
+    response = flask_client.get('/api/assets/export')
+    assert response.status_code == 200
+    assert response.mimetype == 'text/csv'
+    assert response.headers['Content-Disposition'] == 'attachment; filename=assets.csv'
+
+    rows = list(DictReader(StringIO(response.get_data(as_text=True))))
+    assert len(rows) == 12
+    assert rows[0]['name'] == 'Backup NAS'
+    assert rows[-1]['name'] == 'Workstation Beta'
+
+
+def test_export_assets_csv_respects_filters(flask_client):
+    """CSV export applies search, type, and status filters like list endpoint."""
+    response = flask_client.get('/api/assets/export?search=Router&type=network&status=active')
+    assert response.status_code == 200
+
+    rows = list(DictReader(StringIO(response.get_data(as_text=True))))
+    assert len(rows) == 1
+    assert rows[0]['name'] == 'Edge Router'
+    assert rows[0]['asset_type'] == 'network'
+    assert rows[0]['status'] == 'active'
 
 
 # ---------------------------------------------------------------------------
